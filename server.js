@@ -1,8 +1,11 @@
 import express from 'express';
 import path from 'node:path';
+import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { refreshListings } from './src/engine.mjs';
 const app=express();const root=path.dirname(fileURLToPath(import.meta.url));
+// Hostinger's Express preset may invoke the entry file without a build command.
+if (!existsSync(path.join(root,'dist','index.html'))) await import('./scripts/build.mjs');
 app.disable('x-powered-by');
 app.use((req,res,next)=>{res.set({'X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','Permissions-Policy':'geolocation=(), camera=(), microphone=()','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://images.unsplash.com; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"});next();});
 // A single in-flight check is shared across simultaneous visitors. Completed checks

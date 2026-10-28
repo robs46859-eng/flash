@@ -63,7 +63,7 @@ Open <http://localhost:4318>. Set `PORT` to change the listening port; `HOST` de
 npm test
 ```
 
-The focused test suite covers price extraction, changed/removed offers, deposit-versus-price handling, social-link filtering, distance, cancellation/expiration, structured event discovery, missing prices, source failures, and fresh reads. Live source checks and browser checks are recorded separately in `DEPLOYMENT.md`.
+The 17-test focused suite covers price extraction, changed/removed offers, deposit-versus-price handling, social-link filtering, distance, cancellation/expiration, structured event discovery, missing prices, source failures, and fresh reads. Live source checks and browser checks are recorded separately in `DEPLOYMENT.md`.
 
 ## Deploy on Hostinger managed Node.js hosting
 
@@ -83,7 +83,7 @@ The production deployment uses Hostinger’s managed **Web App / Node.js** servi
 | Static assets | `dist/`, served by Express |
 | Environment | Hostinger supplies `PORT`; no secrets needed |
 
-Use the **Node.js Web App** workflow; uploading only `dist/` to PHP/static hosting will not provide the refresh API. Enable automatic deployments from `main` if desired. A deployment should pass the checks below before being treated as ready.
+The server builds the static assets automatically if the host invokes `server.js` without running the build step. Use the **Node.js Web App** workflow; uploading only `dist/` to PHP/static hosting will not provide the refresh API. Enable automatic deployments from `main` if desired. A deployment should pass the checks below before being treated as ready.
 
 ```bash
 curl https://getsemu.com/api/health
