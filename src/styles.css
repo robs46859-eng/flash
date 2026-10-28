@@ -8,3 +8,4 @@
 @media(max-width:480px){.hero h2{font-size:clamp(41px,12vw,56px);white-space:nowrap}.hero{height:330px}.hero-copy{padding-top:24px}.hero h2{margin-top:24px;margin-bottom:20px}}
 
 @media(min-width:801px){.hero{height:400px}.hero h2{white-space:nowrap}}
+@media(max-width:800px){.hero{height:360px}}
