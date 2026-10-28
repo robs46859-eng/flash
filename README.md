@@ -63,7 +63,7 @@ Open <http://localhost:4318>. Set `PORT` to change the listening port; `HOST` de
 npm test
 ```
 
-The 17-test focused suite covers price extraction, changed/removed offers, deposit-versus-price handling, social-link filtering, distance, cancellation/expiration, structured event discovery, missing prices, source failures, and fresh reads. Live source checks and browser checks are recorded separately in `DEPLOYMENT.md`.
+The 18-test focused suite covers price extraction, changed/removed offers, deposit-versus-price handling, social-link filtering, distance, cancellation/expiration, structured event discovery, missing prices, source failures, fresh reads, and Hostinger launcher compatibility. Live source checks and browser checks are recorded separately in `DEPLOYMENT.md`.
 
 ## Deploy on Hostinger managed Node.js hosting
 
