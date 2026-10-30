@@ -7,7 +7,7 @@ An installable, mobile-friendly web app for finding flash tattoos and spontaneou
 
 ## What it does
 
-- Separate categories for **flash tattoos, barbers, spas, theaters, and pop-up events**.
+- Separate categories for **flash tattoos, barbers, spas, theaters, sports & games, and pop-up events**.
 - Shop details with official websites, published social links, researched hours, addresses, costs, offer conditions, and directions.
 - Approximate straight-line distance from **Denver Union Station**, the app’s downtown reference. Coordinates are approximate; these are not walking or driving distances.
 - Search by shop, neighborhood, or style; filter by budget, distance, offers, and walk-ins; sort by distance, price, or name.
@@ -17,13 +17,15 @@ An installable, mobile-friendly web app for finding flash tattoos and spontaneou
 
 ## Freshness and coverage
 
-The starting directory contains 12 researched listings (October 28, 2026), with six tattoo entries. The official Denver BAZAAR calendar can add more event locations automatically; the first verified refresh returned 15 listings in total.
+The directory contains 23 researched entries: the original 12 researched October 28, 2026, plus seven businesses and four games verified October 30. The official Denver BAZAAR calendar can add more event locations automatically. See [the verification report](docs/LISTING_VERIFICATION.md) for each supplied claim, corrections, primary sources, and excluded price estimates.
 
-This is a curated directory with supported source parsers, **not a citywide web or social-media crawler**. It does not scrape Instagram feeds, bypass login, or guarantee remaining appointments or tickets.
+This is a curated directory with supported source parsers, **not a citywide web or social-media crawler**. Sports entries check configured official schedules on refresh and link to ticket providers; ticket-price estimates are not advertised. Games without a published end time leave upcoming results six hours after their start (a display cutoff, not a promised duration). It does not scrape Instagram feeds, bypass login, or guarantee remaining appointments or tickets.
 
 Every completed refresh reads the configured official pages again. Concurrent visitors share only an already-running check; completed checks are not reused. Browser API responses are `no-store`, and the service worker never caches API requests.
 
 - **Source checked:** the relevant posted price/offer or structured event was matched.
+- **Schedule checked:** the official home-game schedule matched; ticket prices and seat availability are not verified.
+- **Shop checked:** the shop/location matched, but there is no verified fixed tattoo price; request a quote.
 - **Page changed:** the page loaded, but the supported offer field was not found. Its current price is hidden.
 - **Check source:** the source could not be read. Its current price is hidden.
 - **Researched:** the initial snapshot or previously loaded information is being displayed, with its date.
@@ -63,7 +65,7 @@ Open <http://localhost:4318>. Set `PORT` to change the listening port; `HOST` de
 npm test
 ```
 
-The 18-test focused suite covers price extraction, changed/removed offers, deposit-versus-price handling, social-link filtering, distance, cancellation/expiration, structured event discovery, missing prices, source failures, fresh reads, and Hostinger launcher compatibility. Live source checks and browser checks are recorded separately in `DEPLOYMENT.md`.
+The 33-test focused suite covers price extraction, changed/removed offers, deposit-versus-price handling, social-link filtering, distance, cancellation/expiration, structured event discovery, missing prices, source failures, fresh reads, game identity, home/away matching, timezone conversion, postponements, service-menu updates, and Hostinger launcher compatibility. Live source checks and browser checks are recorded separately in `DEPLOYMENT.md`.
 
 ## Deploy on Hostinger managed Node.js hosting
 
@@ -96,14 +98,17 @@ curl https://getsemu.com/api/listings
 
 ```text
 server.js              Express server, headers, API and static assets
-src/data.mjs           Curated places, source URLs and researched details
+src/data.mjs           Original places and directory exports
+src/additions.mjs      Businesses and sports verified October 30
+src/sports.mjs         NHL/NFL/NBA/DU schedule adapters
 src/engine.mjs         Source fetching, bounded discovery and extraction
 src/index.html         Accessible responsive application shell
 src/styles.css         Layout and visual design
 src/app.js             Search, filters, saved places, details and refresh
 src/sw.js              Offline shell, excluding API requests
 scripts/build.mjs      Generates dist/ and researched seed data
-tests/engine.test.mjs   Focused source-processing tests
+tests/engine.test.mjs   Original source-processing checks
+tests/additions.test.mjs Price and schedule verification regressions
 ```
 
 To add a place, update `src/data.mjs` with an official source, researched details, approximate coordinates, and an appropriate price rule. Add a parser and a focused fixture test if the source format is new. Then build, test, verify the real source, and redeploy.

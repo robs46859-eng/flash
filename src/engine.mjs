@@ -1,3 +1,4 @@
+import { sportsResult } from './sports.mjs';
 import { LISTINGS, RESEARCHED_AT, DOWNTOWN, EVENT_LOCATIONS } from './data.mjs';
 export function plainText(html) {
  return html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,' ').replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi,' ').replace(/<[^>]*>/g,' ').replace(/&#x([\da-f]+);/gi,(_,n)=>String.fromCodePoint(parseInt(n,16))).replace(/&#(\d+);/g,(_,n)=>String.fromCodePoint(Number(n))).replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').replace(/&quot;/gi,'"').replace(/&#39;|&apos;/gi,"'").replace(/\s+/g,' ').trim();
@@ -10,19 +11,24 @@ export function structuredData(html) {
 export function distanceMiles(lat,lng){if(!Number.isFinite(lat)||!Number.isFinite(lng))return null;const rad=x=>x*Math.PI/180;const dlat=rad(lat-39.7527),dlng=rad(lng+104.9992);const a=Math.sin(dlat/2)**2+Math.cos(rad(lat))*Math.cos(rad(39.7527))*Math.sin(dlng/2)**2;return Math.round(3958.8*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))*10)/10;}
 export function safeURL(value){try{const u=new URL(value);return ['https:','http:'].includes(u.protocol)?u.href:null;}catch{return null;}}
 export function extractPrice(rule,text){
- const rules={certified:/Tiny\s*2[\s\S]{0,45}?\$([\d,]+)/i,minimum:/shop\s+minimum\s*(?::|is)?\s*\$([\d,]+)/i,instagram:/\$([\d,]+)\s+INSTAGRAM SPECIAL FLASH ONLY/i,haircut:/(?:^|\s)Haircut\s+\$([\d,]+)/i,lake:/\$([\d,]+)\s+DAY PASS/i,oakwell:/packages start at\s*\$([\d,]+)/i,rush:/two rush tickets per school ID for\s*\$([\d,]+)/i};
+ const rules={dedication:/our shop has a\s*\$([\d,]+)\s+minimum/i,semion:/Semion Cut\s*\$\s*([\d,]+)/i,alfani:/Alfani[’']s Cut\s*\$\s*([\d,]+)/i,atshop:/Haircut with shampoo\s*\$\s*([\d,]+)/i,certified:/Tiny\s*2[\s\S]{0,45}?\$([\d,]+)/i,minimum:/shop\s+minimum\s*(?::|is)?\s*\$([\d,]+)/i,instagram:/\$([\d,]+)\s+INSTAGRAM SPECIAL FLASH ONLY/i,haircut:/(?:^|\s)Haircut\s+\$([\d,]+)/i,lake:/\$([\d,]+)\s+DAY PASS/i,oakwell:/packages start at\s*\$([\d,]+)/i,rush:/two rush tickets per school ID for\s*\$([\d,]+)/i};
  if(rule==='zeitgeist')return /pre-drawn designs[\s\S]{0,130}lower than our standard hourly rate/i.test(text)?{price:null,label:'Ask for a quote'}:null;
  const m=rules[rule]?.exec(text);if(!m)return null;const price=Number(m[1].replaceAll(',',''));if(!Number.isFinite(price)||price<0||price>5000)return null;
- const label=rule==='minimum'?`$${price} minimum`:rule==='haircut'?`$${price} haircut`:rule==='lake'?`$${price} day pass`:rule==='oakwell'?`from $${price} / suite`:rule==='rush'?`$${price} student rush`:`from $${price}`;return {price,label};
+ const label=['minimum','dedication'].includes(rule)?`$${price} minimum`:rule==='semion'?`$${price} Semion Cut`:rule==='alfani'?`$${price} signature cut`:rule==='atshop'?`$${price} haircut + shampoo`:rule==='haircut'?`$${price} haircut`:rule==='lake'?`$${price} day pass`:rule==='oakwell'?`from $${price} / suite`:rule==='rush'?`$${price} student rush`:`from $${price}`;return {price,label};
 }
 export function parseSocials(html){const urls=[...html.matchAll(/(?:https?:)?\/\/(?:www\.)?(?:instagram|facebook|tiktok)\.com\/[\w.\/-]+/g)].map(m=>safeURL(m[0].startsWith('//')?'https:'+m[0]:m[0])).filter(Boolean);return [...new Set(urls)].filter(x=>!/(squarespace|glossgenius|2008\/fbml|sharer|\/share\b|facebook\.com\/tr(?:\/|$))/i.test(x)).slice(0,8);}
 export function updateListing(base,html,now){
- const text=plainText(html);const price=extractPrice(base.rule,text);const out={...base,checkedAt:now,sourceStatus:price?'confirmed':'changed',verifiedAt:price?now:null,priceVerified:!!price,distance:distanceMiles(base.lat,base.lng)};
+ const text=plainText(html);
+ if(base.category==='sports')return {...sportsResult(base,html,structuredData(html),text,now),distance:distanceMiles(base.lat,base.lng)};
+ const quote=base.rule==='quote'&&base.identity?.every(part=>text.toLowerCase().includes(part.toLowerCase()));
+ const price=quote?{price:null,label:'Ask for a quote'}:extractPrice(base.rule,text);const out={...base,checkedAt:now,sourceStatus:price?'confirmed':'changed',verifiedAt:price?now:null,priceVerified:!!price&&!quote,distance:distanceMiles(base.lat,base.lng)};
  if(price){out.price=price.price;out.priceLabel=price.label;if(price.price!==base.price){out.priceNote='The starting price changed on the official page. Review the current offer and conditions at the source.';}}
  else {out.price=null;out.priceLabel='Check current pricing';}
- const allSocials=parseSocials(html);const knownProfile=base.instagram?new URL(base.instagram).pathname.replaceAll('/','').toLowerCase():null;const socials=allSocials.filter(u=>knownProfile&&new URL(u).pathname.replaceAll('/','').toLowerCase()===knownProfile);if(socials.length){out.socials=socials;const ig=socials.find(x=>/instagram/.test(x));if(ig)out.instagram=ig;}
+ if(base.menu)out.menu=price?extractMenu(base.rule,text):[];
+ const allSocials=parseSocials(html);const knownProfile=base.instagram?new URL(base.instagram).pathname.replaceAll('/','').toLowerCase():null;const seenProfiles=new Set();const socials=allSocials.filter(u=>{const url=new URL(u);const profile=url.pathname.replaceAll('/','').toLowerCase();const key=url.hostname.replace(/^www\./,'')+'/'+profile;if(!knownProfile||profile!==knownProfile||seenProfiles.has(key))return false;seenProfiles.add(key);return true;});if(socials.length){out.socials=socials;const ig=socials.find(x=>/instagram/.test(x));if(ig)out.instagram=ig;}
  const streetNumber=base.address.match(/^\d+/)?.[0];const business=structuredData(html).find(n=>(n.openingHours||n.openingHoursSpecification)&&String(n.address?.streetAddress||n.address||'').startsWith(streetNumber));
  if(business?.openingHours){out.hours=Array.isArray(business.openingHours)?business.openingHours.join(' · '):String(business.openingHours);out.hoursVerified=true;}
+ if(business?.openingHoursSpecification){const specs=Array.isArray(business.openingHoursSpecification)?business.openingHoursSpecification:[business.openingHoursSpecification];const clock=t=>{const [h,m]=String(t).split(':').map(Number);return `${h%12||12}${m?':'+String(m).padStart(2,'0'):''}${h>=12?'pm':'am'}`;};out.hoursData=specs.filter(x=>x.opens&&x.closes).map(x=>[(Array.isArray(x.dayOfWeek)?x.dayOfWeek:[x.dayOfWeek]).map(d=>String(d).split('/').pop()).join(', '),`${clock(x.opens)}–${clock(x.closes)}`]);if(out.hoursData.length){out.hours=out.hoursData.map(x=>x.join(' ')).join(' · ');out.hoursVerified=true;}}
  if(base.rule==='event')return updateEvent(out,structuredData(html),now);
  return out;
 }
@@ -38,7 +44,7 @@ export function updateEvent(base,nodes,now){
 }
 export async function fetchPage(url,fetcher=fetch){
  const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),11000);
- try{const response=await fetcher(url,{signal:controller.signal,redirect:'follow',cache:'no-store',headers:{'User-Agent':'DenverAfterhours/1.0 (+public local-deal directory)','Accept':'text/html'}});if(!response.ok)throw new Error(`HTTP ${response.status}`);if(!/text\/html/i.test(response.headers.get('content-type')||''))throw new Error('Unsupported source');const html=await response.text();if(html.length<300||/cf-chl-|Just a moment\.\.\.|Verify you are human/i.test(html.slice(0,20000)))throw new Error('Source requires a browser');return html.slice(0,2500000);}finally{clearTimeout(timer);}
+ try{const response=await fetcher(url,{signal:controller.signal,redirect:'follow',cache:'no-store',headers:{'User-Agent':'DenverAfterhours/1.0 (+public local-deal directory)','Accept':'text/html'}});if(!response.ok)throw new Error(`HTTP ${response.status}`);if(!/text\/html/i.test(response.headers.get('content-type')||'')&&!(new URL(url).hostname==='api-web.nhle.com'&&/application\/json/i.test(response.headers.get('content-type')||'')))throw new Error('Unsupported source');const html=await response.text();if(html.length<300||/cf-chl-|Just a moment\.\.\.|Verify you are human/i.test(html.slice(0,20000)))throw new Error('Source requires a browser');return html.slice(0,2500000);}finally{clearTimeout(timer);}
 }
 export async function refreshListings(fetcher=fetch,now=new Date().toISOString()){
  const sources=[...new Set(LISTINGS.map(x=>x.source).concat('https://denverbazaar.com/'))];const pages=new Map();
@@ -53,4 +59,13 @@ export async function refreshListings(fetcher=fetch,now=new Date().toISOString()
  const base={...LISTINGS.find(x=>x.id==='bazaar-cherry'),id:'event-'+new URL(url).pathname.split('/').pop(),name:plainText(String(ev.name)),source:url,area:place?.area||a.addressLocality,lat,lng,photo:'market2',title:'A new date for your Denver calendar.',distance:distanceMiles(lat,lng)};listings.push(updateEvent(base,nodes,now));
  }catch{/* The known listings remain usable if a new event page cannot be read. */}}));}
  return {listings,refreshedAt:now,researchAt:RESEARCHED_AT,downtown:DOWNTOWN,confirmed:listings.filter(x=>x.sourceStatus==='confirmed').length,total:listings.length};
+}
+
+export function extractMenu(rule,text){
+ const patterns={
+  semion:[['Semion Cut',/Semion Cut\s*\$\s*([\d,]+)/i],['Scissor Cut',/Scissor Cut\s*\$\s*([\d,]+)/i],['Buzz Cut',/Buzz Cut\s*\$\s*([\d,]+)/i],['Beard trim + straight razor',/Beard Trim with Straight Razor Shave\s*\$\s*([\d,]+)/i]],
+  alfani:[["Signature haircut",/Alfani[’']s Cut\s*\$\s*([\d,]+)/i],['Cut + beard',/Combo Cut \+ Beard\s*\$\s*([\d,]+)/i],['Two Bits · haircut + face shave',/Two Bits\s*\$\s*([\d,]+)/i],['Buzz cut',/Buzz Cut(?:\s+\d+\s*min)?\s*\$\s*([\d,]+)/i]],
+  atshop:[['Haircut with shampoo',/Haircut with shampoo\s*\$\s*([\d,]+)/i],['Head shave / razor fade',/Head shave\/razor fade\s*\$\s*([\d,]+)/i],['Haircut and shave',/Haircut and shave\s*\$\s*([\d,]+)/i]]
+ };
+ return (patterns[rule]||[]).flatMap(([label,re])=>{const m=text.match(re);return m?[{label,price:Number(m[1].replaceAll(',',''))}]:[];});
 }
